@@ -1,0 +1,14 @@
+{
+  "name": "@hephaestus-technologies/express-server",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.17.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hephaestus-Technologies/express-server.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}
