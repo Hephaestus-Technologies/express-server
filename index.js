@@ -39,7 +39,7 @@ module.exports = ({port, assets, clientName}) => {
     };
 
     const fullPathOf = (assetName) => {
-        return `${__dirname}/node_modules/${clientName}/${assetName}`;
+        return `${require.main.filename}/node_modules/${clientName}/${assetName}`;
     };
 
     const isDirectory = (filePath) => {
