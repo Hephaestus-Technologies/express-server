@@ -39,7 +39,8 @@ module.exports = ({port, assets, clientName}) => {
     };
 
     const fullPathOf = (assetName) => {
-        return `${require.main.filename}/node_modules/${clientName}/${assetName}`;
+        const appDir = require.main.filename.split(/[\\/]/).slice(0, -1).join("/");
+        return `${appDir}/node_modules/${clientName}/${assetName}`;
     };
 
     const isDirectory = (filePath) => {
