@@ -1,9 +1,9 @@
 import {Application} from "express";
 
-export interface ExpressServer extends Application {
-
-    constructor(port: number, assets: string[], clientName: string);
+interface ExpressServer extends Application {
 
     start(): void;
 
 }
+
+export default function (port: number, assets: string[], clientName: string) : ExpressServer;
