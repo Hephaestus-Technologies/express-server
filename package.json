@@ -1,6 +1,6 @@
 {
   "name": "@hephaestus-technologies/express-server",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "dependencies": {
     "express": "^4.17.1"
   },
