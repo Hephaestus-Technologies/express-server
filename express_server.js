@@ -6,7 +6,7 @@ class ExpressServer {
     constructor({ port, assets, clientName }) {
         this._setStaticRoutes = () => {
             this.get("/", (req, res) => res.sendFile(this._fullPathOf("index.html")));
-            this._assets.forEach(this._useStatic);
+            this._assets.forEach(asset => this._useStatic(asset));
             this._useStatic("stylesheets");
         };
         this._port = port;
