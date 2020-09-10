@@ -19,7 +19,7 @@ export default class ExpressServer {
 
     private _setStaticRoutes = () => {
         this.get("/", (req, res) => res.sendFile(this._fullPathOf("index.html")));
-        this._assets.forEach(this._useStatic);
+        this._assets.forEach(asset => this._useStatic(asset));
         this._useStatic("stylesheets");
     };
 
