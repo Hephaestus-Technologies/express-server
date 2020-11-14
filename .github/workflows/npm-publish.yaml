@@ -13,13 +13,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@master
+        with:
+          fetch-depth: '0'
+          token: ${{ secrets.MY_PERSONAL_ACCESS_TOKEN }}
+
       - uses: actions/setup-node@master
         with:
           node-version: 12
           registry-url: https://npm.pkg.github.com/
           scope: '@hephaestus-technologies'
 
-      - name: Bump Version and push tag
+      - name: Bump Version and Push Tag
         id: bump_version
         uses: anothrNick/github-tag-action@1.26.0
         env:
@@ -27,12 +31,15 @@ jobs:
           WITH_V: true
           PRERELEASE_SUFFIX: dev
 
-      - name: Build project
-        run: npm run build
+      - name: Build Project
+        run: |
+          npm install
+          tsc --project tsconfig.json
+          npm run bump_version
         env:
           version: ${{ steps.bump_version.outputs.new_tag }}
 
-      - name: Publish
+      - name: Publish Package
         run: npm publish .bin
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MY_PERSONAL_ACCESS_TOKEN }}
