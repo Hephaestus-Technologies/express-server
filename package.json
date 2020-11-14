@@ -8,8 +8,12 @@
     "@types/express": "^4.17.8",
     "typescript": "^4.0.2"
   },
-  "main": "express_server.js",
-  "types": "express_server.d.ts",
+  "exports": {
+    "*": ".bin/*"
+  },
+  "files":  [
+    ".bin"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Hephaestus-Technologies/express-server.git"
