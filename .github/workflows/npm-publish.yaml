@@ -1,23 +1,38 @@
 name: Node.js package
 
 on:
-  pull_request:
-    branches:
-      - master
   push:
     branches:
       - master
+      - develop
 
 jobs:
+
   publish-gpr:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
         with:
           node-version: 12
           registry-url: https://npm.pkg.github.com/
           scope: '@hephaestus-technologies'
-      - run: npm publish
+
+      - name: Bump Version and push tag
+        id: bump_version
+        uses: anothrNick/github-tag-action@1.26.0
         env:
-          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          GITHUB_TOKEN: ${{ secrets.MY_PERSONAL_ACCESS_TOKEN }}
+          WITH_V: true
+          PRERELEASE_SUFFIX: dev
+
+      - name: Build project
+        run: npm run build
+        env:
+          version: ${{ steps.bump_version.outputs.new_tag }}
+
+      - name: Publish
+        run: npm publish .bin
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MY_PERSONAL_ACCESS_TOKEN }}

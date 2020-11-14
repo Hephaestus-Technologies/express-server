@@ -20,5 +20,8 @@
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json | node scripts/bump-version.mjs"
   }
 }

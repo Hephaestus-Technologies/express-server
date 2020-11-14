@@ -4,6 +4,7 @@
     "target": "ESNext",
     "outDir": ".bin",
     "declaration": true,
+    "sourceMap": true,
     "allowSyntheticDefaultImports": true
   },
   "exclude": [
