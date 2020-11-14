@@ -1,7 +1,9 @@
 import * as fs from "fs";
 import * as Express from "express";
 import {Application, RequestHandler} from "express";
+import {ServerConfig} from "./server-config";
 
+// noinspection JSUnusedGlobalSymbols
 export default class ExpressServer {
 
     private readonly _port: number;
@@ -9,10 +11,10 @@ export default class ExpressServer {
     private readonly _clientFolder: string;
     private readonly _app: Application;
 
-    constructor({port, assets, clientFolder} : {port: number, assets: string[], clientFolder: string}) {
-        this._port = port;
-        this._assets = assets;
-        this._clientFolder = clientFolder;
+    constructor(serverConfig: ServerConfig) {
+        this._port = serverConfig.port;
+        this._assets = serverConfig.assets;
+        this._clientFolder = serverConfig.clientFolder;
         this._app = Express();
     }
 
@@ -20,7 +22,7 @@ export default class ExpressServer {
         this._app.get(url, handler);
     }
 
-    start() : void {
+    start(): void {
         this._setStaticRoutes();
         this._app.listen(
             this._port,
@@ -28,13 +30,13 @@ export default class ExpressServer {
         );
     }
 
-    private _setStaticRoutes = () => {
+    private _setStaticRoutes = (): void => {
         this.get("/", (req, res) => res.sendFile(this._fullPathOf("index.html")));
         this._assets.forEach(asset => this._useStatic(asset));
         this._useStatic("stylesheets");
     }
 
-    private _useStatic(assetName) {
+    private _useStatic(assetName: string): void {
         const assetPath = this._fullPathOf(assetName);
         if (ExpressServer._isDirectory(assetPath))
             this._serveDirectory(assetName);
@@ -42,7 +44,7 @@ export default class ExpressServer {
             this._serveFile(assetName);
     }
 
-    private _serveDirectory(assetName) {
+    private _serveDirectory(assetName: string): void {
         this.get(`/${assetName}`, (req, res) => {
             res.sendFile(this._fullPathOf(`${assetName}/index.js`));
         });
@@ -51,17 +53,17 @@ export default class ExpressServer {
         });
     }
 
-    private _serveFile(assetName) {
+    private _serveFile(assetName: string): void {
         const fileName = this._fullPathOf(assetName);
         this.get(`/${assetName}`, (_, res) => res.sendFile(fileName));
     };
 
-    private _fullPathOf(assetName) {
+    private _fullPathOf(assetName: string): string {
         const appDir = require.main.filename.split(/[\\/]/).slice(0, -1).join("/");
         return `${appDir}/${this._clientFolder}/${assetName}`;
     }
 
-    private _resolvePath(assetName) {
+    private _resolvePath(assetName: string): string {
         const filePath = this._fullPathOf(assetName);
         return ExpressServer._isDirectory(filePath) ?
             `${filePath}/index.js` :
@@ -70,11 +72,11 @@ export default class ExpressServer {
             `${filePath}.js`;
     }
 
-    private static _isDirectory(filePath) {
+    private static _isDirectory(filePath: string): boolean {
         return fs.existsSync(filePath) && fs.lstatSync(filePath).isDirectory();
     }
 
-    private static _hasExtension(filePath) {
+    private static _hasExtension(filePath: string): boolean {
         const [fileName] = filePath.split("/").slice(-1);
         return fileName.includes(".");
     }
