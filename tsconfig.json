@@ -4,8 +4,7 @@
     "target": "ESNext",
     "outDir": ".bin",
     "declaration": true,
-    "sourceMap": true,
-    "allowSyntheticDefaultImports": true
+    "sourceMap": true
   },
   "exclude": [
     "node_modules"
