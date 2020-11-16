@@ -18,16 +18,20 @@ export default class ExpressServer {
         this._app = Express();
     }
 
-    get(url: string, handler: RequestHandler) {
+    public get(url: string, handler: RequestHandler): void {
         this._app.get(url, handler);
     }
 
-    start(): void {
+    public start(): void {
         this._setStaticRoutes();
         this._app.listen(
             this._port,
             () => console.log(`Listening on port ${this._port}`)
         );
+    }
+
+    public use(middleware: any): void {
+        this._app.use(middleware);
     }
 
     private _setStaticRoutes = (): void => {
