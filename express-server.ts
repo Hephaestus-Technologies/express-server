@@ -16,10 +16,15 @@ export interface HtmlConfig {
     favicon?: string;
 }
 
-const htmlTemplate = (config: HtmlConfig) => `
+const htmlTemplate = (config: HtmlConfig, clientBundles: string[]) => `
 <html lang="${config.lang || "en"}">
-    <title>${config.title || "Express Server"}</title>
-    ${config.favicon ? `<link rel="icon" href="/${config.favicon}" />` : ""}
+    <head>
+        <title>${config.title || "Express Server"}</title>
+        ${config.favicon ? `<link rel="icon" href="/${config.favicon}" />` : ""}
+    </head>
+    <body>
+        ${clientBundles.map(b => `<script src="${b}"></script>`).join("\n")}
+    </body>
 </html>
 `;
 
@@ -31,6 +36,7 @@ export interface HttpsConfig {
 }
 
 export interface ModuleConfig {
+    bundleName: string;
     clientRouter: Router;
     restApi: RequestHandler;
 }
@@ -40,6 +46,7 @@ export default class ExpressServer {
 
     private serverOptions: ServerOptions = null;
     private httpPort: number = null;
+    private readonly clientBundles: string[] = [];
     private readonly app: Application = Express();
 
     public constructor(
@@ -51,7 +58,7 @@ export default class ExpressServer {
 
     public configureHtml(config: HtmlConfig = {}): void {
         this.app.get("/", (_, response: Response) => {
-            response.send(htmlTemplate(config));
+            response.send(htmlTemplate(config, this.clientBundles));
         });
     }
 
@@ -73,6 +80,7 @@ export default class ExpressServer {
     }
 
     private configureModule(module: ModuleConfig): void {
+        if (module.bundleName) this.clientBundles.push(module.bundleName);
         this.app.use(module.clientRouter, module.restApi);
     }
 
