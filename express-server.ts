@@ -1,88 +1,127 @@
-import * as fs from "fs";
 import * as Express from "express";
-import {Application, RequestHandler} from "express";
-import {ServerConfig} from "./server-config";
+import {Application, RequestHandler, Response, Router} from "express";
+import * as https from "https";
+import {ServerOptions} from "https";
+import * as session from "express-session";
+import * as bodyParser from "body-parser";
+import * as fs from "fs";
+
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+
+export interface HtmlConfig {
+    lang?: string;
+    title?: string
+    favicon?: string;
+}
+
+const htmlTemplate = (config: HtmlConfig) => `
+<html lang="${config.lang || "en"}">
+    <title>${config.title || "Express Server"}</title>
+    ${config.favicon ? `<link rel="icon" href="/${config.favicon}" />` : ""}
+</html>
+`;
+
+export interface HttpsConfig {
+    keyFilename: string;
+    certFilename: string;
+    caFilename: string;
+    httpPort?: number;
+}
+
+export interface ModuleConfig {
+    clientRouter: Router;
+    restApi: RequestHandler;
+}
 
 // noinspection JSUnusedGlobalSymbols
 export default class ExpressServer {
 
-    private readonly _port: number;
-    private readonly _assets: string[];
-    private readonly _clientFolder: string;
-    private readonly _app: Application;
+    private serverOptions: ServerOptions = null;
+    private httpPort: number = null;
+    private readonly app: Application = Express();
 
-    constructor(serverConfig: ServerConfig) {
-        this._port = serverConfig.port;
-        this._assets = serverConfig.assets;
-        this._clientFolder = serverConfig.clientFolder;
-        this._app = Express();
+    public constructor(
+        private port: number
+    ) {
+        this.app.use(bodyParser.json());
+        this.configureModule = this.configureModule.bind(this);
     }
 
-    public get(url: string, handler: RequestHandler): void {
-        this._app.get(url, handler);
+    public configureHtml(config: HtmlConfig): void {
+        this.app.get("/", (_, response: Response) => {
+            response.send(htmlTemplate(config));
+        });
+    }
+
+    public configureHttps(config: HttpsConfig): void {
+        this.serverOptions = {
+            key: fs.readFileSync(config.keyFilename),
+            cert: fs.readFileSync(config.certFilename),
+            ca: fs.readFileSync(config.caFilename)
+        };
+        this.httpPort = config.httpPort || 80;
+    }
+
+    public configureAuthRouter(router: Router): void {
+        this.app.use(router);
+    }
+
+    public configureModules(...modules: ModuleConfig[]): void {
+        modules.forEach(this.configureModule);
+    }
+
+    private configureModule(module: ModuleConfig): void {
+        this.app.use(module.clientRouter, module.restApi);
+    }
+
+    public configureSession(secret: string): void {
+        this.app.use(ExpressServer._sessionConfig(secret));
+    }
+
+    private static _sessionConfig(secret: string) {
+        return session({
+            secret,
+            resave: false,
+            saveUninitialized: true,
+            cookie: {
+                httpOnly: true,
+                secure: true,
+                maxAge: 2 * HOUR
+            }
+        });
     }
 
     public start(): void {
-        this._setStaticRoutes();
-        this._app.listen(
-            this._port,
-            () => console.log(`Listening on port ${this._port}`)
-        );
-    }
-
-    public use(middleware: any): void {
-        this._app.use(middleware);
-    }
-
-    private _setStaticRoutes = (): void => {
-        this.get("/", (req, res) => res.sendFile(this._fullPathOf("index.html")));
-        this._assets.forEach(asset => this._useStatic(asset));
-        this._useStatic("stylesheets");
-    }
-
-    private _useStatic(assetName: string): void {
-        const assetPath = this._fullPathOf(assetName);
-        if (ExpressServer._isDirectory(assetPath))
-            this._serveDirectory(assetName);
+        if (!this.serverOptions)
+            this._startHttpServer();
         else
-            this._serveFile(assetName);
+            this._startHttpsServer();
     }
 
-    private _serveDirectory(assetName: string): void {
-        this.get(`/${assetName}`, (req, res) => {
-            res.sendFile(this._fullPathOf(`${assetName}/index.js`));
+    private _startHttpServer() {
+        const port = this.port || 80;
+        this.app.listen(port, () => {
+            console.log(`Listening on port ${port}`)
+        })
+    }
+
+    private _startHttpsServer() {
+        const httpsServer = https.createServer(this.serverOptions, this.app);
+        const port = this.port || 443;
+        httpsServer.listen(port, () => {
+            this._configureRedirectServer();
+            console.log(`Listening on port ${port}`);
         });
-        this.get(`/${assetName}/*`, (req, res) => {
-            res.sendFile(this._resolvePath(req.url.substring(1)));
-        });
     }
 
-    private _serveFile(assetName: string): void {
-        const fileName = this._fullPathOf(assetName);
-        this.get(`/${assetName}`, (_, res) => res.sendFile(fileName));
-    };
-
-    private _fullPathOf(assetName: string): string {
-        const appDir = require.main.filename.split(/[\\/]/).slice(0, -1).join("/");
-        return `${appDir}/${this._clientFolder}/${assetName}`;
-    }
-
-    private _resolvePath(assetName: string): string {
-        const filePath = this._fullPathOf(assetName);
-        return ExpressServer._isDirectory(filePath) ?
-            `${filePath}/index.js` :
-            ExpressServer._hasExtension(filePath) ?
-            filePath :
-            `${filePath}.js`;
-    }
-
-    private static _isDirectory(filePath: string): boolean {
-        return fs.existsSync(filePath) && fs.lstatSync(filePath).isDirectory();
-    }
-
-    private static _hasExtension(filePath: string): boolean {
-        const [fileName] = filePath.split("/").slice(-1);
-        return fileName.includes(".");
+    private _configureRedirectServer() {
+        const redirectServer = Express();
+        redirectServer.use(((req, res) => {
+            res.redirect(`https://${req.headers.host}${req.url}`);
+        }));
+        redirectServer.listen(this.httpPort);
     }
 
 }

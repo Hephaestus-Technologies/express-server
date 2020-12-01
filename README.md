@@ -1,12 +1,92 @@
-###Boilerplate for an Express server
+#An easily configurable Express server
 
-Pass an object to the constructor containing three values:
-- `port:integer` - The port to run on
-- `assets:string[]` - a list of directories within the client that should be served by the same names
-- `clientName:string` - the name of the node module that is the client
+`npm install --save @hephaestus-technologies/express-server`
 
-The app assumes the client will have a `\stylesheets` directory that will contain the client's stylesheets.
+##Minimal Example
 
-The app assumes the initial HTML will be contained in the file `\index.html`.
+This will start an Express server on port 80.
 
-The app assumes the initial JavaScript module that should run immediately after the HTML body is loaded.
+```typeScript
+import ExpressServer from "express-server";
+
+const server = new ExpressServer();
+server.start();
+```
+
+##Port
+By default, content will be served on port 80
+(or port 443 if HTTPs is configured).
+To override this, just pass a different port to the constructor:
+```TypeScript
+const server = new ExpressServer(3000);
+```
+This is the port that will override both the HTTP and HTTPs default.
+
+##Serve HTML at root
+
+To serve HTML at root ("http://localhost:{PORT}/"):
+
+```TypeScript
+server.configureHtml();
+```
+
+The HTML can be further customized by passing a config object:
+
+```TypeScript
+server.configureHtml({
+  lang: string, //default "en"
+  title: string, //default "Express Server"
+  favicon: string //default null
+});
+```
+
+Note that scripts and stylesheets are not configured via this method.
+See [Modules](#modules) to serve client code.
+
+##Using HTTPs
+
+By default, content will be served over HTTP. To serve content over HTTPs,
+provide the paths to the key/certificate/ca. Filenames must be absolute.
+
+```TypeScript
+server.configureHttps({
+  keyFilename: string,
+  certFilename: string,
+  caFilename: string,
+  httpPort: number //default 80
+});
+```
+
+When configured to serve HTTPs, the server will automatically redirect any
+request sent over HTTP on the provided port (defaulting to `80`).
+
+##Modules
+A module combines client JavaScipt and a REST API.
+Provide a router to serve static client content. Provide a RequestHandler
+to serve REST requests. This interface is expected to substantially change
+in the near future.
+
+```TypeScript
+interface ModuleConfig {
+  clientRouter: Router,
+  restApi: RequestHandler
+}
+
+server.configureModules(moduleConfig1, moduleConfig2, ...);
+```
+
+See
+https://github.com/Hephaestus-Technologies/rest-api
+for an easy to use REST library.
+
+
+##Additional Configuration
+
+###Session Config
+Express Session can be included simply by passing a secret:
+```TypeScript
+const secret = "blah";
+server.configureSession(secret);
+```
+The session's cookie will have a 2 hour expiration
+and will only be served over HTTPs.
