@@ -49,7 +49,7 @@ export default class ExpressServer {
         this.configureModule = this.configureModule.bind(this);
     }
 
-    public configureHtml(config: HtmlConfig): void {
+    public configureHtml(config: HtmlConfig = {}): void {
         this.app.get("/", (_, response: Response) => {
             response.send(htmlTemplate(config));
         });
