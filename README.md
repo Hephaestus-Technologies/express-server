@@ -63,11 +63,14 @@ request sent over HTTP on the provided port (defaulting to `80`).
 ##Modules
 A module combines client JavaScipt and a REST API.
 Provide a router to serve static client content. Provide a RequestHandler
-to serve REST requests. This interface is expected to substantially change
+to serve REST requests. If a bundle name is provided and HTML is configure,
+a script tag with that as the source will be added to the body of the HTML.
+This interface is expected to substantially change
 in the near future.
 
 ```TypeScript
 interface ModuleConfig {
+  bundleName? string,
   clientRouter: Router,
   restApi: RequestHandler
 }
