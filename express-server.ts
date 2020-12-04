@@ -1,135 +1,84 @@
 import * as Express from "express";
-import {Application, RequestHandler, Response, Router} from "express";
+import {Application, Request, Response, Router} from "express";
 import * as https from "https";
-import {ServerOptions} from "https";
-import * as session from "express-session";
-import * as bodyParser from "body-parser";
-import * as fs from "fs";
+import HtmlConfig from "./html-config";
+import HttpsConfig, {toServerOptions} from "./https-config";
+import ModuleConfig from "./module-config";
+import ServerConfiguration from "./server-configuration";
 
-const SECOND = 1000;
-const MINUTE = 60 * SECOND;
-const HOUR = 60 * MINUTE;
-
-export interface HtmlConfig {
-    lang?: string;
-    title?: string
-    favicon?: string;
-}
-
-const htmlTemplate = (config: HtmlConfig, clientBundles: string[]) => `
-<html lang="${config.lang || "en"}">
-    <head>
-        <title>${config.title || "Express Server"}</title>
-        ${config.favicon ? `<link rel="icon" href="/${config.favicon}" />` : ""}
-    </head>
-    <body>
-        ${clientBundles.map(b => `<script src="${b}"></script>`).join("\n")}
-    </body>
-</html>
-`;
-
-export interface HttpsConfig {
-    keyFilename: string;
-    certFilename: string;
-    caFilename: string;
-    httpPort?: number;
-}
-
-export interface ModuleConfig {
-    bundleName: string;
-    clientRouter: Router;
-    restApi: RequestHandler;
-}
+const DEFAULT_HTTP_PORT = 80;
+const DEFAULT_HTTPS_PORT = 443;
 
 // noinspection JSUnusedGlobalSymbols
 export default class ExpressServer {
 
-    private serverOptions: ServerOptions = null;
-    private httpPort: number = null;
-    private readonly clientBundles: string[] = [];
     private readonly app: Application = Express();
+    private readonly _serverConfig = new ServerConfiguration();
 
     public constructor(
         private port: number
-    ) {
-        this.app.use(bodyParser.json());
-        this.configureModule = this.configureModule.bind(this);
-    }
+    ) { }
 
-    public configureHtml(config: HtmlConfig = {}): void {
-        this.app.get("/", (_, response: Response) => {
-            response.send(htmlTemplate(config, this.clientBundles));
-        });
+    public configureHtml(config: HtmlConfig): void {
+        this._serverConfig.configureHtml(config);
     }
 
     public configureHttps(config: HttpsConfig): void {
-        this.serverOptions = {
-            key: fs.readFileSync(config.keyFilename),
-            cert: fs.readFileSync(config.certFilename),
-            ca: fs.readFileSync(config.caFilename)
-        };
-        this.httpPort = config.httpPort || 80;
+        this._serverConfig.configureHttps(config);
     }
 
     public configureAuthRouter(router: Router): void {
-        this.app.use(router);
+        this._serverConfig.configureAuthRouter(router);
     }
 
     public configureModules(...modules: ModuleConfig[]): void {
-        modules.forEach(this.configureModule);
-    }
-
-    private configureModule(module: ModuleConfig): void {
-        if (module.bundleName) this.clientBundles.push(module.bundleName);
-        this.app.use(module.clientRouter, module.restApi);
+        this._serverConfig.configureModules(modules);
     }
 
     public configureSession(secret: string): void {
-        this.app.use(ExpressServer._sessionConfig(secret));
-    }
-
-    private static _sessionConfig(secret: string) {
-        return session({
-            secret,
-            resave: false,
-            saveUninitialized: true,
-            cookie: {
-                httpOnly: true,
-                secure: true,
-                maxAge: 2 * HOUR
-            }
-        });
+        this._serverConfig.configureSession(secret);
     }
 
     public start(): void {
-        if (!this.serverOptions)
-            this._startHttpServer();
-        else
-            this._startHttpsServer();
+        this._configureServer();
+        this._startServer();
     }
 
-    private _startHttpServer() {
-        const port = this.port || 80;
+    private _configureServer(): void {
+        this.app.use(...this._serverConfig.middleware());
+    }
+
+    private _startServer(): void {
+        const httpsConfig = this._serverConfig.httpsConfig();
+        if (!httpsConfig)
+            this._startHttpServer();
+        else
+            this._startHttpsServer(httpsConfig);
+    }
+
+    private _startHttpServer(): void {
+        const port = this.port || DEFAULT_HTTP_PORT;
         this.app.listen(port, () => {
-            console.log(`Listening on port ${port}`)
+            console.log(`Listening on port ${port}`);
         })
     }
 
-    private _startHttpsServer() {
-        const httpsServer = https.createServer(this.serverOptions, this.app);
-        const port = this.port || 443;
+    private _startHttpsServer(httpsConfig: HttpsConfig): void {
+        const serverOptions = toServerOptions(httpsConfig);
+        const httpsServer = https.createServer(serverOptions, this.app);
+        const port = this.port || DEFAULT_HTTPS_PORT;
         httpsServer.listen(port, () => {
-            this._configureRedirectServer();
+            ExpressServer._startRedirectServer(httpsConfig);
             console.log(`Listening on port ${port}`);
         });
     }
 
-    private _configureRedirectServer() {
+    private static _startRedirectServer(httpsConfig: HttpsConfig): void {
         const redirectServer = Express();
-        redirectServer.use(((req, res) => {
-            res.redirect(`https://${req.headers.host}${req.url}`);
-        }));
-        redirectServer.listen(this.httpPort);
+        redirectServer.use((request: Request, response: Response) => {
+            response.redirect(`https://${request.headers.host}${request.url}`);
+        });
+        redirectServer.listen(httpsConfig.httpPort || DEFAULT_HTTP_PORT);
     }
 
 }

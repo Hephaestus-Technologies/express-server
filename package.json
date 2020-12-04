@@ -1,6 +1,11 @@
 {
   "name": "@hephaestus-technologies/express-server",
-  "main": "./express-server.js",
+  "exports": {
+    "./express-server": "./express-server.js",
+    "./https-config": "./https-config.js",
+    "./html-config": "./html-config.js",
+    "./module-config": "./module-config.js"
+  },
   "dependencies": {
     "@types/express": "^4.17.8",
     "@types/node": "^14.14.7",
